@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from 'react';
+import { useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { motion } from 'framer-motion-3d';
 import * as THREE from 'three';
@@ -15,36 +15,6 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
   const detailsRef = useRef<THREE.Group>(null);
   const { positions, colors } = generateGalaxyGeometry();
   const [hovered, setHovered] = useState(false);
-
-  const shaderMaterial = useMemo(() => {
-    return new THREE.ShaderMaterial({
-      uniforms: {
-        color: { value: new THREE.Color(0xffffff) },
-      },
-      vertexShader: `
-        attribute vec3 color;
-        varying vec3 vColor;
-        void main() {
-          vColor = color;
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_Position = projectionMatrix * mvPosition;
-          gl_PointSize = 2.0;
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vColor;
-        void main() {
-          vec2 xy = gl_PointCoord.xy - vec2(0.5);
-          float ll = length(xy);
-          float alpha = 1.0 - smoothstep(0.0, 0.5, ll);
-          gl_FragColor = vec4(vColor, alpha);
-        }
-      `,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-  }, []);
   
   const linePoints = [
     new THREE.Vector3(0, 0, 0),
@@ -94,7 +64,15 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
             itemSize={3}
           />
         </bufferGeometry>
-        {shaderMaterial}
+        <pointsMaterial
+          size={0.02}
+          sizeAttenuation={true}
+          depthWrite={false}
+          vertexColors={true}
+          blending={THREE.AdditiveBlending}
+          transparent={true}
+          alphaMap={new THREE.TextureLoader().load('/disc.png')}
+        />
       </motion.points>
 
       <group position={targetPosition}>
@@ -113,7 +91,8 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
             depthWrite={false}
             color="#ffffff"
             opacity={hovered ? 1 : 0.8}
-            transparent
+            transparent={true}
+            alphaMap={new THREE.TextureLoader().load('/disc.png')}
             blending={THREE.AdditiveBlending}
           />
         </points>
