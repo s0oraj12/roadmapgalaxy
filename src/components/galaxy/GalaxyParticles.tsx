@@ -1,6 +1,5 @@
-import { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { motion } from 'framer-motion-3d';
 import { Text, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { generateGalaxyGeometry } from './utils/galaxyGeometry';
@@ -10,7 +9,7 @@ interface Props {
   onTargetClick: () => void;
 }
 
-const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
+const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => {
   const galaxyRef = useRef<THREE.Points>(null);
   const labelRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
@@ -32,66 +31,19 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
     };
   }, [targetPosition]);
 
-  // Custom shader material for particles
-  const shaderMaterial = useMemo(() => {
-    return new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0 },
-        targetIndex: { value: targetIndex },
-        hovered: { value: 0 },
-      },
-      vertexShader: `
-        uniform float time;
-        uniform int targetIndex;
-        uniform float hovered;
-        attribute vec3 color;
-        varying vec3 vColor;
-        varying float vIsTarget;
-        
-        void main() {
-          vColor = color;
-          vIsTarget = float(gl_VertexID == targetIndex);
-          
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          
-          // Make target star pulse when hovered
-          if (gl_VertexID == targetIndex) {
-            float scale = 1.0 + sin(time * 5.0) * 0.2 * hovered;
-            mvPosition.xyz *= scale;
-          }
-          
-          gl_Position = projectionMatrix * mvPosition;
-          gl_PointSize = vIsTarget * (hovered * 4.0 + 2.0) + (1.0 - vIsTarget) * 2.0;
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vColor;
-        varying float vIsTarget;
-        
-        void main() {
-          float dist = length(gl_PointCoord - vec2(0.5));
-          if (dist > 0.5) discard;
-          
-          vec3 finalColor = vColor;
-          if (vIsTarget > 0.5) {
-            finalColor = mix(vec3(1.0), vec3(0.9, 0.95, 1.0), dist * 2.0);
-          }
-          
-          gl_FragColor = vec4(finalColor, 1.0 - dist * 2.0);
-        }
-      `,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-  }, [targetIndex]);
+  // Shader uniforms
+  const uniforms = useMemo(() => ({
+    time: { value: 0 },
+    targetIndex: { value: targetIndex },
+    hovered: { value: 0 },
+  }), [targetIndex]);
 
   // Animation and interaction
   useFrame((state) => {
     if (galaxyRef.current) {
       galaxyRef.current.rotation.y += 0.0005;
-      shaderMaterial.uniforms.time.value = state.clock.getElapsedTime();
-      shaderMaterial.uniforms.hovered.value = hovered ? 1.0 : 0.0;
+      uniforms.time.value = state.clock.getElapsedTime();
+      uniforms.hovered.value = hovered ? 1.0 : 0.0;
     }
 
     // Update label position to face camera
@@ -101,26 +53,25 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
   });
 
   // Raycaster for target star interaction
-  const handlePointerMove = (event: THREE.Event) => {
-    const pointIndex = (event as any).index;
+  const handlePointerMove = useCallback((event: THREE.Intersection) => {
+    const pointIndex = event.index;
     setHovered(pointIndex === targetIndex);
-  };
+  }, [targetIndex]);
+
+  const handleClick = useCallback((event: THREE.Intersection) => {
+    const pointIndex = event.index;
+    if (pointIndex === targetIndex) {
+      onTargetClick();
+    }
+  }, [targetIndex, onTargetClick]);
 
   return (
     <group>
-      <motion.points
+      <points
         ref={galaxyRef}
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 2, ease: "easeOut" }}
         onPointerMove={handlePointerMove}
         onPointerOut={() => setHovered(false)}
-        onClick={(event) => {
-          const pointIndex = (event as any).index;
-          if (pointIndex === targetIndex) {
-            onTargetClick();
-          }
-        }}
+        onClick={handleClick}
       >
         <bufferGeometry>
           <bufferAttribute
@@ -136,8 +87,53 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
             itemSize={3}
           />
         </bufferGeometry>
-        {shaderMaterial}
-      </motion.points>
+        <shaderMaterial
+          uniforms={uniforms}
+          vertexShader={`
+            uniform float time;
+            uniform int targetIndex;
+            uniform float hovered;
+            attribute vec3 color;
+            varying vec3 vColor;
+            varying float vIsTarget;
+            
+            void main() {
+              vColor = color;
+              vIsTarget = float(gl_VertexID == targetIndex);
+              
+              vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+              
+              // Make target star pulse when hovered
+              if (gl_VertexID == targetIndex) {
+                float scale = 1.0 + sin(time * 5.0) * 0.2 * hovered;
+                mvPosition.xyz *= scale;
+              }
+              
+              gl_Position = projectionMatrix * mvPosition;
+              gl_PointSize = vIsTarget * (hovered * 4.0 + 2.0) + (1.0 - vIsTarget) * 2.0;
+            }
+          `}
+          fragmentShader={`
+            varying vec3 vColor;
+            varying float vIsTarget;
+            
+            void main() {
+              float dist = length(gl_PointCoord - vec2(0.5));
+              if (dist > 0.5) discard;
+              
+              vec3 finalColor = vColor;
+              if (vIsTarget > 0.5) {
+                finalColor = mix(vec3(1.0), vec3(0.9, 0.95, 1.0), dist * 2.0);
+              }
+              
+              gl_FragColor = vec4(finalColor, 1.0 - dist * 2.0);
+            }
+          `}
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </points>
 
       {/* Label for target star */}
       {hovered && (
@@ -167,3 +163,4 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
 };
 
 export default GalaxyParticles;
+
