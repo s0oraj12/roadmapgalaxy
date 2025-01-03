@@ -65,6 +65,11 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
     }
   }, [targetIndex, onTargetClick]);
 
+  const labelPosition = useMemo(() => {
+    const offset = new THREE.Vector3(0.5, 0.5, 0);
+    return targetPosition.clone().add(offset);
+  }, [targetPosition]);
+
   return (
     <group>
       <points
@@ -137,22 +142,21 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
 
       {/* Label for target star */}
       {hovered && (
-        <group 
-          ref={labelRef}
-          position={[targetPosition.x + 0.5, targetPosition.y + 0.3, targetPosition.z]}
-        >
+        <group ref={labelRef} position={labelPosition}>
           <Line
-            points={[[0, 0, 0], [-0.5, -0.3, 0]]}
+            points={[
+              [0, 0, 0],
+              [-0.5, -0.5, 0]
+            ]}
             color="white"
-            lineWidth={1}
-            dashed={false}
+            lineWidth={2}
           />
           <Text
-            position={[0, 0, 0]}
-            fontSize={0.15}
+            position={[-0.5, -0.5, 0]}
+            fontSize={0.2}
             color="white"
-            anchorX="left"
-            anchorY="middle"
+            anchorX="right"
+            anchorY="top"
           >
             Roadmap
           </Text>
