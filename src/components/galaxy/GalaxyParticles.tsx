@@ -12,29 +12,29 @@ interface Props {
 
 const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
   const galaxyRef = useRef<THREE.Points>(null);
-  const labelRef = useRef<THREE.Group>(null);
-  const lineRef = useRef<THREE.Line>(null);
+  const detailsRef = useRef<THREE.Group>(null);
   const { positions, colors } = generateGalaxyGeometry();
   const [hovered, setHovered] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
-
-  const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+  
+  const linePoints = [
     new THREE.Vector3(0, 0, 0),
     new THREE.Vector3(0, 1.2, 0)
-  ]);
+  ];
 
   useFrame((state) => {
     if (galaxyRef.current) {
       galaxyRef.current.rotation.y += 0.0005;
     }
-
-    if (showDetails) {
-      if (labelRef.current) {
-        labelRef.current.rotation.y = galaxyRef.current?.rotation.y || 0;
-        labelRef.current.position.y = targetPosition.y + 1.5 + Math.sin(state.clock.elapsedTime) * 0.05;
-      }
-      if (lineRef.current) {
-        lineRef.current.rotation.y = galaxyRef.current?.rotation.y || 0;
+    
+    if (detailsRef.current) {
+      detailsRef.current.rotation.y = galaxyRef.current?.rotation.y || 0;
+      // Use elapsedTime for smooth animation
+      const progress = Math.min(1, (state.clock.elapsedTime - 2) * 0.5); // Start after 2s, take 2s to complete
+      detailsRef.current.scale.setScalar(progress);
+      
+      // Subtle floating animation only after fully appeared
+      if (progress === 1) {
+        detailsRef.current.position.y = Math.sin(state.clock.elapsedTime) * 0.02;
       }
     }
   });
@@ -50,9 +50,6 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           ease: "easeOut",
           type: "spring",
           damping: 20 
-        }}
-        onAnimationComplete={() => {
-          setTimeout(() => setShowDetails(true), 200);
         }}
       >
         <bufferGeometry>
@@ -78,7 +75,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
         />
       </motion.points>
 
-      {/* Target Star - Part of initial load */}
+      {/* Target Star */}
       <group position={targetPosition}>
         <points>
           <bufferGeometry>
@@ -110,45 +107,31 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
         </mesh>
       </group>
 
-      {/* Line and Text - Appear after galaxy loads */}
-      {showDetails && (
-        <motion.group
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1 }}
-        >
-          <line
-            ref={lineRef}
-            position={targetPosition}
-            geometry={lineGeometry}
-          >
-            <lineBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.4}
-              blending={THREE.AdditiveBlending}
-            />
-          </line>
+      {/* Line and Text - always rendered but scaled */}
+      <group ref={detailsRef} position={targetPosition} scale={0}>
+        <line geometry={new THREE.BufferGeometry().setFromPoints(linePoints)}>
+          <lineBasicMaterial
+            color="#ffffff"
+            transparent
+            opacity={0.4}
+            blending={THREE.AdditiveBlending}
+          />
+        </line>
 
-          <group
-            ref={labelRef}
-            position={[targetPosition.x, targetPosition.y + 1.5, targetPosition.z]}
-          >
-            <Text
-              color="white"
-              fontSize={0.2}
-              anchorX="center"
-              anchorY="middle"
-              opacity={0.8}
-              onPointerOver={() => setHovered(true)}
-              onPointerOut={() => setHovered(false)}
-              onClick={onTargetClick}
-            >
-              Level 1
-            </Text>
-          </group>
-        </motion.group>
-      )}
+        <Text
+          position={[0, 1.5, 0]}
+          color="white"
+          fontSize={0.2}
+          anchorX="center"
+          anchorY="middle"
+          opacity={0.8}
+          onPointerOver={() => setHovered(true)}
+          onPointerOut={() => setHovered(false)}
+          onClick={onTargetClick}
+        >
+          Level 1
+        </Text>
+      </group>
     </group>
   );
 };
