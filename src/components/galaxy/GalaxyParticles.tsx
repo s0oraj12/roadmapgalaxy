@@ -1,8 +1,9 @@
-import { useRef, useState, useMemo } from 'react';
+import { useRef, useState, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { motion } from 'framer-motion-3d';
 import * as THREE from 'three';
-import { Text } from '@react-three/drei';
+import { Text, useTexture, Effects } from '@react-three/drei';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
 import { generateGalaxyGeometry } from './utils/galaxyGeometry';
 import { createParticleTexture } from './utils/particleTexture';
 
@@ -14,20 +15,56 @@ interface Props {
 const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
   const galaxyRef = useRef<THREE.Points>(null);
   const detailsRef = useRef<THREE.Group>(null);
-  // Double the particle count in generateGalaxyGeometry
-  const { positions, colors } = generateGalaxyGeometry(true); // Pass true to double particles
+  const targetRef = useRef<THREE.Points>(null);
   const [hovered, setHovered] = useState(false);
   
+  // Generate galaxy geometry with enhanced settings
+  const { positions, colors, sizes } = useMemo(() => generateGalaxyGeometry({
+    particlesCount: 150000,
+    radius: 12,
+    branches: 5,
+    spin: 1.5,
+    randomnessPower: 2.8,
+    bulgeSize: 0.3,
+    armWidth: 0.4,
+    dustLanes: true,
+    coreIntensity: 2.5,
+    insideColor: '#ffab4d',
+    outsideColor: '#3b7bcc',
+    dustColor: '#4a2d05'
+  }), []);
+
+  // Create optimized particle texture
   const particleTexture = useMemo(() => createParticleTexture(), []);
-  
-  const linePoints = [
+
+  // Create instanced particles for better performance
+  const particles = useMemo(() => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+    return geometry;
+  }, [positions, colors, sizes]);
+
+  // Line points for target indicator
+  const linePoints = useMemo(() => [
     new THREE.Vector3(0, 0, 0),
     new THREE.Vector3(0, 1.2, 0)
-  ];
+  ], []);
 
+  // Animation and interaction handling
   useFrame((state) => {
     if (galaxyRef.current) {
-      galaxyRef.current.rotation.y += 0.0005;
+      // Smooth rotation based on mouse position
+      const mouseX = (state.mouse.x * 0.1);
+      const mouseY = (state.mouse.y * 0.1);
+      
+      // Base rotation + mouse interaction
+      galaxyRef.current.rotation.y += 0.0002 + mouseX * 0.0001;
+      galaxyRef.current.rotation.x = mouseY * 0.2;
+      
+      // Add slight wobble for more organic movement
+      galaxyRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.1) * 0.02;
     }
     
     if (detailsRef.current) {
@@ -36,13 +73,21 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
       detailsRef.current.scale.setScalar(progress);
       
       if (progress === 1) {
+        // Smooth floating animation
         detailsRef.current.position.y = Math.sin(state.clock.elapsedTime) * 0.02;
       }
+    }
+
+    // Animate target star
+    if (targetRef.current) {
+      const pulseScale = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.1;
+      targetRef.current.scale.setScalar(pulseScale);
     }
   });
 
   return (
-    <group>
+    <>
+      {/* Main Galaxy */}
       <motion.points
         ref={galaxyRef}
         initial={{ scale: 0 }}
@@ -54,35 +99,36 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           damping: 20 
         }}
       >
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            count={positions.length / 3}
-            array={positions}
-            itemSize={3}
-          />
-          <bufferAttribute
-            attach="attributes-color"
-            count={colors.length / 3}
-            array={colors}
-            itemSize={3}
-          />
-        </bufferGeometry>
+        <primitive object={particles} />
         <pointsMaterial
-          size={0.015} // Smaller size since we have more particles
+          size={0.015}
           sizeAttenuation={true}
           depthWrite={false}
           vertexColors={true}
           blending={THREE.AdditiveBlending}
           map={particleTexture}
-          opacity={1.2} // Increased brightness
           transparent={true}
+          alphaMap={particleTexture}
+          alphaTest={0.001}
         />
       </motion.points>
 
+      {/* Bloom Effect */}
+      <Effects>
+        <unrealBloomPass
+          threshold={0.1}
+          strength={0.8}
+          radius={0.8}
+        />
+      </Effects>
+
+      {/* Lighting */}
+      <ambientLight intensity={0.1} />
+      <pointLight position={[0, 0, 0]} intensity={1} distance={15} decay={2} />
+
       {/* Target Star */}
       <group position={targetPosition}>
-        <points>
+        <points ref={targetRef}>
           <bufferGeometry>
             <bufferAttribute
               attach="attributes-position"
@@ -92,17 +138,18 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
             />
           </bufferGeometry>
           <pointsMaterial
-            size={0.02}
+            size={0.04}
             sizeAttenuation={true}
             depthWrite={false}
             color="#ffffff"
-            opacity={hovered ? 1.2 : 1}
+            opacity={hovered ? 1.5 : 1.2}
             transparent={true}
             blending={THREE.AdditiveBlending}
             map={particleTexture}
           />
         </points>
 
+        {/* Clickable area */}
         <mesh
           onPointerOver={() => setHovered(true)}
           onPointerOut={() => setHovered(false)}
@@ -113,6 +160,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
         </mesh>
       </group>
 
+      {/* Target Details */}
       <group ref={detailsRef} position={targetPosition} scale={0}>
         <line geometry={new THREE.BufferGeometry().setFromPoints(linePoints)}>
           <lineBasicMaterial
@@ -137,7 +185,28 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           Level 1
         </Text>
       </group>
-    </group>
+
+      {/* Background particles */}
+      <points>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={1000}
+            array={new Float32Array(Array.from({ length: 3000 }, () => (Math.random() - 0.5) * 50))}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        <pointsMaterial
+          size={0.01}
+          sizeAttenuation={true}
+          color="#ffffff"
+          opacity={0.6}
+          transparent={true}
+          blending={THREE.AdditiveBlending}
+          map={particleTexture}
+        />
+      </points>
+    </>
   );
 };
 
