@@ -4,6 +4,7 @@ import { OrbitControls, Stars } from '@react-three/drei'
 import { motion } from 'framer-motion'
 import * as THREE from 'three'
 import { Node as FlowNode, Edge as FlowEdge } from '@xyflow/react'
+import { useNavigationStore } from '../../store/navigationStore'
 import { StellarNode } from './StellarNode'
 import { ConstellationEdge } from './ConstellationEdge'
 import { NodeType, EdgeType } from './types'
@@ -21,272 +22,250 @@ interface StellarRoadmapProps {
   edges: FlowEdge[]
 }
 
+interface CameraControllerProps {
+  onCameraReady: (camera: THREE.Camera) => void;
+}
 
-
-
-
-
-const CameraController = ({ onCameraReady }: { onCameraReady: (camera: THREE.Camera) => void }) => {
-  const { camera, scene } = useThree()
-  const hasInitialized = useRef(false)
+const CameraController: React.FC<CameraControllerProps> = ({ onCameraReady }) => {
+  const { camera, scene } = useThree();
+  const hasInitialized = useRef(false);
   
-  // Function to calculate optimal camera position
   const calculateOptimalView = useCallback(() => {
-    const box = new THREE.Box3().setFromObject(scene)
-    const size = box.getSize(new THREE.Vector3())
-    const center = box.getCenter(new THREE.Vector3())
+    const box = new THREE.Box3().setFromObject(scene);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
 
-    // Calculate optimal distance based on scene size and aspect ratio
-    const maxDimension = Math.max(size.x, size.y, size.z)
-    const fov = camera.fov * (Math.PI / 180)
-    
-    // reudce the multipler for initial zoom to move closer to graph, increase to go far 
-    const distance = (maxDimension / 2) / Math.tan(fov / 2) * 0.075
+    const maxDimension = Math.max(size.x, size.y, size.z);
+    const fov = camera.fov * (Math.PI / 180);
+    const distance = (maxDimension / 2) / Math.tan(fov / 2) * 0.075;
     
     return {
       position: new THREE.Vector3(
         center.x,
-        center.y - distance * 0.2, //center.y + distance * 0.1
-        center.z + distance ),
-      target: new THREE.Vector3 (
-      center.x,
-      center.y - distance * 0.2, // Add this line to move the look-at target, previous target: center
-      center.z )
-    }
-  }, [camera.fov, scene])
+        center.y - distance * 0.2,
+        center.z + distance
+      ),
+      target: new THREE.Vector3(
+        center.x,
+        center.y - distance * 0.2,
+        center.z
+      )
+    };
+  }, [camera.fov, scene]);
 
-  // Handle initial camera setup
   useEffect(() => {
     if (!hasInitialized.current) {
-      // Wait for scene to be ready
       requestAnimationFrame(() => {
-        const { position, target } = calculateOptimalView()
-        
-        // Set initial camera position
-        camera.position.copy(position)
-        camera.lookAt(target)
-        camera.updateProjectionMatrix()
-        
-        // Mark as initialized
-        hasInitialized.current = true
-        onCameraReady(camera)
-      })
+        const { position, target } = calculateOptimalView();
+        camera.position.copy(position);
+        camera.lookAt(target);
+        camera.updateProjectionMatrix();
+        hasInitialized.current = true;
+        onCameraReady(camera);
+      });
     }
-  }, [camera, calculateOptimalView, onCameraReady])
+  }, [camera, calculateOptimalView, onCameraReady]);
 
-  // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       if (hasInitialized.current) {
-        const { position, target } = calculateOptimalView()
-        camera.position.lerp(position, 0.5)
-        camera.lookAt(target)
-        camera.updateProjectionMatrix()
+        const { position, target } = calculateOptimalView();
+        camera.position.lerp(position, 0.5);
+        camera.lookAt(target);
+        camera.updateProjectionMatrix();
       }
-    }
+    };
 
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [camera, calculateOptimalView])
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [camera, calculateOptimalView]);
 
-  // Handle scene changes
   useEffect(() => {
     const observer = new MutationObserver(() => {
       if (hasInitialized.current) {
-        const { position, target } = calculateOptimalView()
-        camera.position.lerp(position, 0.3)
-        camera.lookAt(target)
-        camera.updateProjectionMatrix()
+        const { position, target } = calculateOptimalView();
+        camera.position.lerp(position, 0.3);
+        camera.lookAt(target);
+        camera.updateProjectionMatrix();
       }
-    })
+    });
 
     if (scene.el) {
       observer.observe(scene.el, { 
         childList: true, 
         subtree: true 
-      })
+      });
     }
 
-    return () => observer.disconnect()
-  }, [scene, camera, calculateOptimalView])
+    return () => observer.disconnect();
+  }, [scene, camera, calculateOptimalView]);
 
-  return null
-}
-
-
-
-
+  return null;
+};
 
 
 const StellarRoadmap: React.FC<StellarRoadmapProps> = ({ nodes: flowNodes, edges: flowEdges }) => {
+  const { setCursorStyle, setCurrentScene } = useNavigationStore();
+  
   const nodes = useMemo(() => flowNodes.map(node => ({
     id: node.id,
     data: node.data,
     position: node.position,
     className: node.className
-  })), [flowNodes])
+  })), [flowNodes]);
   
   const edges = useMemo(() => flowEdges.map(edge => ({
     id: edge.id,
     source: edge.source,
     target: edge.target,
     animated: edge.animated
-  })), [flowEdges])
+  })), [flowEdges]);
 
-  const [activeNode, setActiveNode] = useState<string | null>(null)
-  const controlsRef = useRef<any>()
-  const [camera, setCamera] = useState<THREE.Camera | null>(null)
-  const initialCameraPosition = useRef<THREE.Vector3 | null>(null)
-  const [nodePositions, setNodePositions] = useState(() => calculateNodePositions(nodes))
-  const [selectedNode, setSelectedNode] = useState<string | null>(null)
-  const [isLocked, setIsLocked] = useState(false)
+  const [activeNode, setActiveNode] = useState<string | null>(null);
+  const controlsRef = useRef<any>();
+  const [camera, setCamera] = useState<THREE.Camera | null>(null);
+  const initialCameraPosition = useRef<THREE.Vector3 | null>(null);
+  const [nodePositions, setNodePositions] = useState(() => calculateNodePositions(nodes));
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
+
+  // Set initial state and cleanup
+  useEffect(() => {
+    setCurrentScene('roadmap');
+    
+    return () => {
+      setCursorStyle('default');
+      setCurrentScene('galaxy');
+    };
+  }, [setCurrentScene, setCursorStyle]);
+
+  // Update cursor style based on locked state
+  useEffect(() => {
+    setCursorStyle(isLocked ? 'grab' : 'default');
+  }, [isLocked, setCursorStyle]);
 
   const handleNodeClick = useCallback((nodeId: string) => {
     if (!isLocked) {
-      setActiveNode(nodeId)
-      setSelectedNode(nodeId)
-      const position = nodePositions.get(nodeId)
+      setActiveNode(nodeId);
+      setSelectedNode(nodeId);
+      const position = nodePositions.get(nodeId);
       if (position && controlsRef.current) {
-        controlsRef.current.target.set(...position)
-        controlsRef.current.update()
+        controlsRef.current.target.set(...position);
+        controlsRef.current.update();
       }
     }
-  }, [nodePositions, isLocked])
+  }, [nodePositions, isLocked]);
 
   const handleNodeSelect = useCallback((nodeId: string) => {
     if (controlsRef.current && camera && !isLocked) {
-      const position = nodePositions.get(nodeId)
+      const position = nodePositions.get(nodeId);
       if (position) {
         const offset = new THREE.Vector3(
           camera.position.x - position[0],
           camera.position.y - position[1],
           camera.position.z - position[2]
-        )
-        controlsRef.current.target.set(...position)
+        );
+        controlsRef.current.target.set(...position);
         camera.position.set(
           position[0] + offset.x,
           position[1] + offset.y,
           position[2] + offset.z
-        )
-        camera.updateProjectionMatrix()
-        controlsRef.current.update()
+        );
+        camera.updateProjectionMatrix();
+        controlsRef.current.update();
       }
     }
-  }, [nodePositions, camera, isLocked])
+  }, [nodePositions, camera, isLocked]);
 
   const handleNodeDrag = useCallback((nodeId: string, newPosition: [number, number, number]) => {
     setNodePositions(prev => {
-      const updated = new Map(prev)
+      const updated = new Map(prev);
       if (isLocked) {
-        const delta = newPosition.map((val, i) => val - (prev.get(nodeId)?.[i] ?? 0)) as [number, number, number]
+        const delta = newPosition.map((val, i) => val - (prev.get(nodeId)?.[i] ?? 0)) as [number, number, number];
         prev.forEach((pos, id) => {
-          updated.set(id, pos.map((val, i) => val + delta[i]) as [number, number, number])
-        })
+          updated.set(id, pos.map((val, i) => val + delta[i]) as [number, number, number]);
+        });
       } else {
-        updated.set(nodeId, newPosition)
+        updated.set(nodeId, newPosition);
       }
-      return updated
-    })
-  }, [isLocked])
+      return updated;
+    });
+  }, [isLocked]);
 
   const handleEdgeDrag = useCallback((delta: [number, number, number]) => {
     if (isLocked) {
       setNodePositions(prev => {
-        const updated = new Map()
+        const updated = new Map();
         prev.forEach((pos, id) => {
-          updated.set(id, pos.map((val, i) => val + delta[i]) as [number, number, number])
-        })
-        return updated
-      })
+          updated.set(id, pos.map((val, i) => val + delta[i]) as [number, number, number]);
+        });
+        return updated;
+      });
     }
-  }, [isLocked])
+  }, [isLocked]);
 
   const handleZoom = useCallback((zoomIn: boolean) => {
     if (controlsRef.current && camera) {
-      const factor = zoomIn ? CAMERA_SETTINGS.ZOOM_IN_FACTOR : CAMERA_SETTINGS.ZOOM_OUT_FACTOR
-      const currentDistance = camera.position.distanceTo(controlsRef.current.target)
+      const factor = zoomIn ? CAMERA_SETTINGS.ZOOM_IN_FACTOR : CAMERA_SETTINGS.ZOOM_OUT_FACTOR;
+      const currentDistance = camera.position.distanceTo(controlsRef.current.target);
       const newDistance = Math.min(
         Math.max(currentDistance * factor, CAMERA_SETTINGS.MIN_DISTANCE),
         CAMERA_SETTINGS.MAX_DISTANCE
-      )
+      );
       
       const newPosition = calculateNewCameraPosition(
         camera,
         controlsRef.current.target.toArray() as [number, number, number],
         controlsRef.current.target,
         newDistance
-      )
+      );
       
-      camera.position.copy(newPosition)
-      camera.updateProjectionMatrix()
-      controlsRef.current.update()
+      camera.position.copy(newPosition);
+      camera.updateProjectionMatrix();
+      controlsRef.current.update();
     }
-  }, [camera])
-
-
+  }, [camera]);
 
   const handleReset = useCallback(() => {
-  if (controlsRef.current && camera) {
-    // Calculate bounding box of all nodes
-    const positions = Array.from(nodePositions.values());
-    const bbox = new THREE.Box3();
-    positions.forEach(pos => {
-      bbox.expandByPoint(new THREE.Vector3(...pos));
-    });
-    
-    // Calculate ideal camera position
-    const size = bbox.getSize(new THREE.Vector3());
-    const center = bbox.getCenter(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y);
-    const fov = camera.fov * (Math.PI / 180);
-    const distance = (maxDim / Math.tan(fov / 2)) * 0.4; // Keep the 0.4 zoom factor as it works well
-    
-    // Calculate vertical offset
-    const verticalOffset = distance * 0.05; // New proportional offset
-    
-    // Set new camera position and target with adjusted vertical offset
-    camera.position.set(
-      center.x,
-      center.y - verticalOffset,
-      center.z + distance
-    );
-    controlsRef.current.target.set(
-      center.x,
-      center.y - verticalOffset,
-      center.z
-    );
-    camera.updateProjectionMatrix();
-    controlsRef.current.update();
-    
-    // Reset state
-    setActiveNode(null);
-    setSelectedNode(null);
-    setNodePositions(calculateNodePositions(nodes));
-  }
-}, [camera, nodes, nodePositions]);
-
-  
-
-
-
-
-  
+    if (controlsRef.current && camera) {
+      const positions = Array.from(nodePositions.values());
+      const bbox = new THREE.Box3();
+      positions.forEach(pos => {
+        bbox.expandByPoint(new THREE.Vector3(...pos));
+      });
+      
+      const size = bbox.getSize(new THREE.Vector3());
+      const center = bbox.getCenter(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y);
+      const fov = camera.fov * (Math.PI / 180);
+      const distance = (maxDim / Math.tan(fov / 2)) * 0.4;
+      const verticalOffset = distance * 0.05;
+      
+      camera.position.set(
+        center.x,
+        center.y - verticalOffset,
+        center.z + distance
+      );
+      controlsRef.current.target.set(
+        center.x,
+        center.y - verticalOffset,
+        center.z
+      );
+      camera.updateProjectionMatrix();
+      controlsRef.current.update();
+      
+      setActiveNode(null);
+      setSelectedNode(null);
+      setNodePositions(calculateNodePositions(nodes));
+    }
+  }, [camera, nodes, nodePositions]);
 
   const handleCameraReady = useCallback((camera: THREE.Camera) => {
-    setCamera(camera)
+    setCamera(camera);
     if (!initialCameraPosition.current) {
-      initialCameraPosition.current = new THREE.Vector3(...CAMERA_SETTINGS.INITIAL_POSITION)
+      initialCameraPosition.current = new THREE.Vector3(...CAMERA_SETTINGS.INITIAL_POSITION);
     }
-  }, [])
-
-  useEffect(() => {
-    const setCursor = () => {
-      document.body.style.cursor = isLocked ? 'grab' : 'auto'
-    }
-    setCursor()
-    window.addEventListener('mousemove', setCursor)
-    return () => window.removeEventListener('mousemove', setCursor)
-  }, [isLocked])
+  }, []);
 
   return (
     <motion.div 
@@ -318,8 +297,8 @@ const StellarRoadmap: React.FC<StellarRoadmapProps> = ({ nodes: flowNodes, edges
         <Stars radius={100} depth={50} count={5000} factor={4} fade speed={1} />
 
         {edges.map(edge => {
-          const startPos = nodePositions.get(edge.source)
-          const endPos = nodePositions.get(edge.target)
+          const startPos = nodePositions.get(edge.source);
+          const endPos = nodePositions.get(edge.target);
           return startPos && endPos && (
             <ConstellationEdge
               key={edge.id}
@@ -329,11 +308,11 @@ const StellarRoadmap: React.FC<StellarRoadmapProps> = ({ nodes: flowNodes, edges
               isLocked={isLocked}
               onDrag={handleEdgeDrag}
             />
-          )
+          );
         })}
 
         {nodes.map(node => {
-          const position = nodePositions.get(node.id)
+          const position = nodePositions.get(node.id);
           return position && (
             <StellarNode
               key={node.id}
@@ -345,7 +324,7 @@ const StellarRoadmap: React.FC<StellarRoadmapProps> = ({ nodes: flowNodes, edges
               isLocked={isLocked}
               onSelect={() => handleNodeSelect(node.id)}
             />
-          )
+          );
         })}
 
         <OrbitControls
@@ -359,7 +338,7 @@ const StellarRoadmap: React.FC<StellarRoadmapProps> = ({ nodes: flowNodes, edges
         />
       </Canvas>
     </motion.div>
-  )
-}
+  );
+};
 
-export default StellarRoadmap
+export default StellarRoadmap;
