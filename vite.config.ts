@@ -17,4 +17,10 @@ export default defineConfig({
       transformMixedEsModules: true,
     },
   },
+  server: {
+    historyApiFallback: true,
+  },
+  preview: {
+    historyApiFallback: true,
+  }
 });
