@@ -1,6 +1,6 @@
 import React, { useRef, useState, useMemo, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Text, Line } from '@react-three/drei';
+import { Text, Line, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { generateGalaxyGeometry } from './utils/galaxyGeometry';
 
@@ -11,7 +11,6 @@ interface Props {
 
 const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => {
   const galaxyRef = useRef<THREE.Points>(null);
-  const labelRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
   const { camera } = useThree();
 
@@ -20,8 +19,9 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
     const geometry = generateGalaxyGeometry();
     const targetIdx = geometry.positions.length;
     
-    // Add target star to the geometry
-    const newPositions = new Float32Array([...geometry.positions, targetPosition.x, targetPosition.y, targetPosition.z]);
+    // Add target star at a specific position (similar to sun in milky way)
+    const targetPos = new THREE.Vector3(2, 0, 2); // Adjust these values to position the star
+    const newPositions = new Float32Array([...geometry.positions, targetPos.x, targetPos.y, targetPos.z]);
     const newColors = new Float32Array([...geometry.colors, 1, 1, 1]); // White color for target
     
     return {
@@ -29,7 +29,7 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
       colors: newColors,
       targetIndex: targetIdx / 3
     };
-  }, [targetPosition]);
+  }, []);
 
   // Shader uniforms
   const uniforms = useMemo(() => ({
@@ -38,21 +38,14 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
     hovered: { value: 0 },
   }), [targetIndex]);
 
-  // Animation and interaction
   useFrame((state) => {
     if (galaxyRef.current) {
       galaxyRef.current.rotation.y += 0.0005;
       uniforms.time.value = state.clock.getElapsedTime();
       uniforms.hovered.value = hovered ? 1.0 : 0.0;
     }
-
-    // Update label position to face camera
-    if (labelRef.current) {
-      labelRef.current.quaternion.copy(camera.quaternion);
-    }
   });
 
-  // Raycaster for target star interaction
   const handlePointerMove = useCallback((event: THREE.Intersection) => {
     const pointIndex = event.index;
     setHovered(pointIndex === targetIndex);
@@ -65,10 +58,14 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
     }
   }, [targetIndex, onTargetClick]);
 
-  const labelPosition = useMemo(() => {
-    const offset = new THREE.Vector3(0.5, 0.5, 0);
-    return targetPosition.clone().add(offset);
-  }, [targetPosition]);
+  // Calculate label position relative to the target star
+  const getLabelPosition = () => {
+    if (!galaxyRef.current) return new THREE.Vector3(2, -0.5, 2);
+    
+    const targetPos = new THREE.Vector3(2, 0, 2);
+    targetPos.applyMatrix4(galaxyRef.current.matrixWorld);
+    return new THREE.Vector3(targetPos.x, targetPos.y - 0.5, targetPos.z);
+  };
 
   return (
     <group>
@@ -115,7 +112,7 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
               }
               
               gl_Position = projectionMatrix * mvPosition;
-              gl_PointSize = vIsTarget * (hovered * 4.0 + 2.0) + (1.0 - vIsTarget) * 2.0;
+              gl_PointSize = vIsTarget * (hovered * 4.0 + 3.0) + (1.0 - vIsTarget) * 2.0;
             }
           `}
           fragmentShader={`
@@ -140,27 +137,34 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
         />
       </points>
 
-      {/* Label for target star */}
+      {/* Label with line for target star */}
       {hovered && (
-        <group ref={labelRef} position={labelPosition}>
+        <Billboard
+          follow={true}
+          position={getLabelPosition()}
+        >
           <Line
             points={[
-              [0, 0, 0],
-              [-0.5, -0.5, 0]
+              [0, 0.5, 0], // Start from above the label
+              [0, 0, 0]    // End at label position
             ]}
             color="white"
             lineWidth={2}
+            transparent
+            opacity={0.8}
           />
           <Text
-            position={[-0.5, -0.5, 0]}
-            fontSize={0.2}
+            position={[0, 0, 0]}
+            fontSize={0.15}
             color="white"
-            anchorX="right"
-            anchorY="top"
+            anchorX="center"
+            anchorY="bottom"
+            renderOrder={1}
+            depthTest={false}
           >
-            Roadmap
+            Level1
           </Text>
-        </group>
+        </Billboard>
       )}
     </group>
   );
