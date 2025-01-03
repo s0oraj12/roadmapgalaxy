@@ -17,7 +17,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
   const [hovered, setHovered] = useState(false);
   
   // Create circular texture for particles
-  const particleTexture = new THREE.TextureLoader().load('src/icons/circle.png');
+  const particleTexture = new THREE.TextureLoader().load('src/icons/circle.svg');
   
   const linePoints = [
     new THREE.Vector3(0, 0, 0),
