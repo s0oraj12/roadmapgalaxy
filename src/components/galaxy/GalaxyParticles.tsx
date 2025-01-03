@@ -17,7 +17,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
   const [hovered, setHovered] = useState(false);
   
   // Create circular texture for particles
-  const particleTexture = new THREE.TextureLoader().load('src/icons/circle.svg');
+  const particleTexture = new THREE.TextureLoader().load('/circle.svg');
   
   const linePoints = [
     new THREE.Vector3(0, 0, 0),
@@ -74,6 +74,8 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           vertexColors={true}
           blending={THREE.AdditiveBlending}
           map={particleTexture}
+          transparent={true}
+          alphaTest={0.001}
         />
       </motion.points>
 
@@ -93,9 +95,10 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
             depthWrite={false}
             color="#ffffff"
             opacity={hovered ? 1 : 0.8}
-            transparent
+            transparent={true}
             blending={THREE.AdditiveBlending}
             map={particleTexture}
+            alphaTest={0.001}
           />
         </points>
 
