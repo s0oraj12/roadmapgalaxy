@@ -68,16 +68,16 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           />
         </bufferGeometry>
         <pointsMaterial
-          size={0.02}
-          sizeAttenuation={true}
-          depthWrite={false}
-          vertexColors={true}
-          blending={THREE.AdditiveBlending}
-          map={particleTexture}
-          transparent={true}
-          alphaTest={0.05} // Higher alpha test for crisper edges
-          opacity={2} // Increased opacity for more intensity
-        />
+  size={0.025} // Slightly larger than original 0.02
+  sizeAttenuation={true}
+  depthWrite={false}
+  vertexColors={true}
+  blending={THREE.AdditiveBlending}
+  map={particleTexture}
+  transparent={true}
+  alphaTest={0.01} // Lower alpha test to allow more particles
+  opacity={1.5} // Adjusted opacity
+/>
       </motion.points>
 
       {/* Target Star */}
