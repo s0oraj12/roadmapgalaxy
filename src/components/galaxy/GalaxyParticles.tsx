@@ -68,16 +68,13 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           />
         </bufferGeometry>
         <pointsMaterial
-  size={0.025} // Slightly larger than original 0.02
-  sizeAttenuation={true}
-  depthWrite={false}
-  vertexColors={true}
-  blending={THREE.AdditiveBlending}
-  map={particleTexture}
-  transparent={true}
-  alphaTest={0.01} // Lower alpha test to allow more particles
-  opacity={1.5} // Adjusted opacity
-/>
+          size={0.02}
+          sizeAttenuation={true}
+          depthWrite={false}
+          vertexColors={true}
+          blending={THREE.AdditiveBlending}
+          map={particleTexture}
+        />
       </motion.points>
 
       {/* Target Star */}
@@ -96,11 +93,10 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
             sizeAttenuation={true}
             depthWrite={false}
             color="#ffffff"
-            opacity={hovered ? 2 : 1.6}
-            transparent={true}
+            opacity={hovered ? 1 : 0.8}
+            transparent
             blending={THREE.AdditiveBlending}
             map={particleTexture}
-            alphaTest={0.05}
           />
         </points>
 
@@ -114,7 +110,6 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
         </mesh>
       </group>
 
-      {/* Line and Text */}
       <group ref={detailsRef} position={targetPosition} scale={0}>
         <line geometry={new THREE.BufferGeometry().setFromPoints(linePoints)}>
           <lineBasicMaterial
@@ -144,4 +139,3 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
 };
 
 export default GalaxyParticles;
-
