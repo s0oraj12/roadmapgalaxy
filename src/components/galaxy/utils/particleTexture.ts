@@ -15,9 +15,9 @@ export function createParticleTexture() {
     canvas.width / 2
   );
   
-  // Modified color stops for softer falloff
+  // Simple white dot with soft edge
   gradient.addColorStop(0, 'rgba(255,255,255,1)');
-  gradient.addColorStop(0.5, 'rgba(255,255,255,0.8)');
+  gradient.addColorStop(0.7, 'rgba(255,255,255,0.5)');
   gradient.addColorStop(1, 'rgba(255,255,255,0)');
   
   context.fillStyle = gradient;
