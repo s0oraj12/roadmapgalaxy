@@ -28,9 +28,11 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
     
     if (detailsRef.current) {
       detailsRef.current.rotation.y = galaxyRef.current?.rotation.y || 0;
-      const progress = Math.min(1, (state.clock.elapsedTime - 2) * 0.5);
+      // Use elapsedTime for smooth animation
+      const progress = Math.min(1, (state.clock.elapsedTime - 2) * 0.5); // Start after 2s, take 2s to complete
       detailsRef.current.scale.setScalar(progress);
       
+      // Subtle floating animation only after fully appeared
       if (progress === 1) {
         detailsRef.current.position.y = Math.sin(state.clock.elapsedTime) * 0.02;
       }
@@ -70,11 +72,10 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           depthWrite={false}
           vertexColors={true}
           blending={THREE.AdditiveBlending}
-          transparent={true}
-          alphaMap={new THREE.TextureLoader().load('/disc.png')}
         />
       </motion.points>
 
+      {/* Target Star */}
       <group position={targetPosition}>
         <points>
           <bufferGeometry>
@@ -91,8 +92,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
             depthWrite={false}
             color="#ffffff"
             opacity={hovered ? 1 : 0.8}
-            transparent={true}
-            alphaMap={new THREE.TextureLoader().load('/disc.png')}
+            transparent
             blending={THREE.AdditiveBlending}
           />
         </points>
@@ -107,6 +107,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
         </mesh>
       </group>
 
+      {/* Line and Text - always rendered but scaled */}
       <group ref={detailsRef} position={targetPosition} scale={0}>
         <line geometry={new THREE.BufferGeometry().setFromPoints(linePoints)}>
           <lineBasicMaterial
