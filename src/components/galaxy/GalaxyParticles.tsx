@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import { motion } from 'framer-motion-3d';
@@ -10,18 +10,20 @@ interface Props {
   onTargetClick: () => void;
 }
 
-const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => {
-  const galaxyRef = useRef<THREE.Points>(null);
+const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
 
-  // Generate galaxy geometry including the target star
+  // Generate galaxy geometry with target star included
   const { positions, colors } = useMemo(() => {
     const geometry = generateGalaxyGeometry();
-    return {
-      positions: geometry.positions,
-      colors: geometry.colors
-    };
+    const targetPos = new THREE.Vector3(3, 0, 2); // Position between center and edge
+
+    // Add target star to the galaxy geometry
+    const newPositions = new Float32Array([...geometry.positions, targetPos.x, targetPos.y, targetPos.z]);
+    const newColors = new Float32Array([...geometry.colors, 1, 0.9, 0.6]); // Warm white color
+
+    return { positions: newPositions, colors: newColors };
   }, []);
 
   useFrame(() => {
@@ -30,22 +32,20 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
     }
   });
 
-  const handleClick = (event: THREE.Event) => {
-    event.stopPropagation();
-    onTargetClick();
-  };
-
-  // Target star position (between center and edge)
-  const starPosition = new THREE.Vector3(4, 0, 4);
-
   return (
     <group ref={groupRef}>
-      {/* Galaxy particles */}
       <motion.points
-        ref={galaxyRef}
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ duration: 2, ease: "easeOut" }}
+        onPointerMove={(e) => {
+          const index = (e as any).index;
+          setHovered(index === positions.length / 3 - 1);
+        }}
+        onClick={(e) => {
+          const index = (e as any).index;
+          if (index === positions.length / 3 - 1) onTargetClick();
+        }}
       >
         <bufferGeometry>
           <bufferAttribute
@@ -62,7 +62,7 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
           />
         </bufferGeometry>
         <pointsMaterial
-          size={0.02}
+          size={0.025}
           sizeAttenuation={true}
           depthWrite={false}
           vertexColors={true}
@@ -70,65 +70,38 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
         />
       </motion.points>
 
-      {/* Target Star */}
-      <group position={starPosition}>
-        {/* Glow effect */}
-        <sprite scale={[0.5, 0.5, 0.5]}>
-          <spriteMaterial
-            attach="material"
-            map={new THREE.TextureLoader().load('/glow.png')}
-            transparent={true}
-            blending={THREE.AdditiveBlending}
-            color={hovered ? "#ffffff" : "#ffaa00"}
-          />
-        </sprite>
-
-        {/* Clickable star */}
-        <mesh
-          onPointerOver={() => setHovered(true)}
-          onPointerOut={() => setHovered(false)}
-          onClick={handleClick}
-        >
-          <sphereGeometry args={[0.1, 16, 16]} />
-          <meshBasicMaterial
-            color={hovered ? "#ffffff" : "#ffaa00"}
-            transparent
-            opacity={0.8}
-          />
-        </mesh>
-
-        {/* Line pointing upward */}
-        <line onClick={handleClick}>
-          <bufferGeometry
-            attach="geometry"
-            {...new THREE.BufferGeometry().setFromPoints([
-              new THREE.Vector3(0, 0, 0),
-              new THREE.Vector3(0, 2, 0)
-            ])}
-          />
-          <lineBasicMaterial
-            attach="material"
-            color="white"
-            linewidth={2}
-            transparent
-            opacity={0.8}
-          />
-        </line>
-
-        {/* Text label */}
-        <Text
-          position={[0, 2.2, 0]}
-          fontSize={0.5}
-          color="white"
-          anchorX="center"
-          anchorY="bottom"
-          renderOrder={1}
-          depthTest={false}
-          onClick={handleClick}
-        >
-          Level1
-        </Text>
-      </group>
+      {hovered && (
+        <group position={[3, 0, 2]}>
+          <line>
+            <bufferGeometry
+              attach="geometry"
+              {...new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, 1.5, 0)
+              ])}
+            />
+            <lineBasicMaterial
+              color="#8892b0"
+              transparent
+              opacity={0.6}
+              linewidth={1}
+            />
+          </line>
+          <Text
+            position={[0, 1.7, 0]}
+            fontSize={0.2}
+            color="#8892b0"
+            anchorX="center"
+            anchorY="bottom"
+            renderOrder={1}
+            depthTest={false}
+            font="/fonts/Geist-Regular.ttf"
+            characters="LEVEL1"
+          >
+            LEVEL1
+          </Text>
+        </group>
+      )}
     </group>
   );
 };
