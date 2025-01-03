@@ -87,15 +87,6 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
 
   return (
     <>
-      <EffectComposer>
-        <Bloom
-          intensity={0.8}
-          luminanceThreshold={0.1}
-          luminanceSmoothing={0.8}
-          mipmapBlur
-        />
-      </EffectComposer>
-
       {/* Main Galaxy */}
       <motion.points
         ref={galaxyRef}
@@ -110,7 +101,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
       >
         <primitive object={particles} />
         <pointsMaterial
-          size={0.015}
+          size={0.02} // Increased size for better visibility
           sizeAttenuation={true}
           depthWrite={false}
           vertexColors={true}
@@ -119,12 +110,13 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           transparent={true}
           alphaMap={particleTexture}
           alphaTest={0.001}
+          opacity={1} // Ensure full opacity
         />
       </motion.points>
 
       {/* Lighting */}
-      <ambientLight intensity={0.1} />
-      <pointLight position={[0, 0, 0]} intensity={1} distance={15} decay={2} />
+      <ambientLight intensity={0.5} /> {/* Increased ambient light */}
+      <pointLight position={[0, 0, 0]} intensity={2} distance={15} decay={2} /> {/* Increased point light */}
 
       {/* Target Star */}
       <group position={targetPosition}>
@@ -206,6 +198,16 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           map={particleTexture}
         />
       </points>
+
+      {/* Add EffectComposer after all objects */}
+      <EffectComposer>
+        <Bloom
+          intensity={0.5} // Reduced intensity
+          luminanceThreshold={0} // Lowered threshold to capture more light
+          luminanceSmoothing={0.9}
+          mipmapBlur={true}
+        />
+      </EffectComposer>
     </>
   );
 };
