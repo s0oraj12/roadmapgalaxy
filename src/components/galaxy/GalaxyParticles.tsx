@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { motion } from 'framer-motion-3d';
 import * as THREE from 'three';
 import { Text } from '@react-three/drei';
-import { EffectComposer, UnrealBloomPass } from '@react-three/postprocessing';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { generateGalaxyGeometry } from './utils/galaxyGeometry';
 import { createParticleTexture } from './utils/particleTexture';
 
@@ -88,10 +88,11 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
   return (
     <>
       <EffectComposer>
-        <UnrealBloomPass
-          threshold={0.1}
-          strength={0.8}
-          radius={0.8}
+        <Bloom
+          intensity={0.8}
+          luminanceThreshold={0.1}
+          luminanceSmoothing={0.8}
+          mipmapBlur
         />
       </EffectComposer>
 
