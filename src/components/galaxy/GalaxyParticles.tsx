@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { motion } from 'framer-motion-3d';
 import * as THREE from 'three';
 import { Text } from '@react-three/drei';
+import { generateGalaxyGeometry } from './utils/galaxyGeometry';
+import { createParticleTexture } from './utils/particleTexture';
 
 interface Props {
   targetPosition: THREE.Vector3;
@@ -12,7 +14,10 @@ interface Props {
 const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
   const galaxyRef = useRef<THREE.Points>(null);
   const detailsRef = useRef<THREE.Group>(null);
+  const { positions, colors } = generateGalaxyGeometry();
   const [hovered, setHovered] = useState(false);
+  
+  const particleTexture = useMemo(() => createParticleTexture(), []);
   
   const linePoints = [
     new THREE.Vector3(0, 0, 0),
@@ -34,48 +39,6 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
       }
     }
   });
-
-  // Generate more particles with adjusted parameters
-  const { positions, colors } = (() => {
-    const particleCount = 50000; // Increased from original
-    const positions = new Float32Array(particleCount * 3);
-    const colors = new Float32Array(particleCount * 3);
-    
-    const radius = 3;
-    const branches = 5;
-    const spin = 1;
-    const randomness = 0.2;
-    const randomnessPower = 3;
-    const insideColor = new THREE.Color('#ff6030');
-    const outsideColor = new THREE.Color('#1b3984');
-    
-    for(let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      
-      // Position
-      const radius_i = Math.random() * radius;
-      const branchAngle = (i % branches) / branches * Math.PI * 2;
-      const spinAngle = radius_i * spin;
-      
-      const randX = Math.pow(Math.random(), randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * randomness * radius_i;
-      const randY = Math.pow(Math.random(), randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * randomness * radius_i;
-      const randZ = Math.pow(Math.random(), randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * randomness * radius_i;
-      
-      positions[i3] = Math.cos(branchAngle + spinAngle) * radius_i + randX;
-      positions[i3 + 1] = randY;
-      positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius_i + randZ;
-      
-      // Color
-      const mixedColor = insideColor.clone();
-      mixedColor.lerp(outsideColor, radius_i / radius);
-      
-      colors[i3] = mixedColor.r;
-      colors[i3 + 1] = mixedColor.g;
-      colors[i3 + 2] = mixedColor.b;
-    }
-    
-    return { positions, colors };
-  })();
 
   return (
     <group>
@@ -105,12 +68,16 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           />
         </bufferGeometry>
         <pointsMaterial
-          size={0.01} // Smaller particles
-          sizeAttenuation={true}
-          depthWrite={false}
-          vertexColors={true}
-          blending={THREE.AdditiveBlending}
-        />
+  size={0.025} // Slightly larger than original 0.02
+  sizeAttenuation={true}
+  depthWrite={false}
+  vertexColors={true}
+  blending={THREE.AdditiveBlending}
+  map={particleTexture}
+  transparent={true}
+  alphaTest={0.01} // Lower alpha test to allow more particles
+  opacity={1.5} // Adjusted opacity
+/>
       </motion.points>
 
       {/* Target Star */}
@@ -129,9 +96,11 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
             sizeAttenuation={true}
             depthWrite={false}
             color="#ffffff"
-            opacity={hovered ? 1 : 0.8}
-            transparent
+            opacity={hovered ? 2 : 1.6}
+            transparent={true}
             blending={THREE.AdditiveBlending}
+            map={particleTexture}
+            alphaTest={0.05}
           />
         </points>
 
@@ -145,6 +114,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
         </mesh>
       </group>
 
+      {/* Line and Text */}
       <group ref={detailsRef} position={targetPosition} scale={0}>
         <line geometry={new THREE.BufferGeometry().setFromPoints(linePoints)}>
           <lineBasicMaterial
@@ -174,3 +144,4 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
 };
 
 export default GalaxyParticles;
+
