@@ -70,13 +70,11 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           depthWrite={false}
           vertexColors={true}
           blending={THREE.AdditiveBlending}
-          transparent={true}
-          alphaMap={new THREE.TextureLoader().load('/star.png')}
         />
       </motion.points>
 
       <group position={targetPosition}>
-        <points>
+        <points visible={false}>
           <bufferGeometry>
             <bufferAttribute
               attach="attributes-position"
@@ -91,8 +89,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
             depthWrite={false}
             color="#ffffff"
             opacity={hovered ? 1 : 0.8}
-            transparent={true}
-            alphaMap={new THREE.TextureLoader().load('/star.png')}
+            transparent
             blending={THREE.AdditiveBlending}
           />
         </points>
@@ -107,7 +104,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
         </mesh>
       </group>
 
-      <group ref={detailsRef} position={targetPosition} scale={0}>
+      <group ref={detailsRef} position={targetPosition} scale={0} visible={false}>
         <line geometry={new THREE.BufferGeometry().setFromPoints(linePoints)}>
           <lineBasicMaterial
             color="#ffffff"
