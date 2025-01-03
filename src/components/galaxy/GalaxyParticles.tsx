@@ -133,10 +133,10 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
 
       {/* Clickable text */}
       <Text
-        position={[4, 2.2, 4]} // Position above the line
+        position={[4, 2.2, 4]} 
         fontSize={0.5}
         color="white"
-        anchorX="center"
+        anchorX="center" 
         anchorY="bottom"
         renderOrder={1}
         depthTest={false}
