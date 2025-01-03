@@ -14,7 +14,8 @@ interface Props {
 const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
   const galaxyRef = useRef<THREE.Points>(null);
   const detailsRef = useRef<THREE.Group>(null);
-  const { positions, colors } = generateGalaxyGeometry();
+  // Double the particle count in generateGalaxyGeometry
+  const { positions, colors } = generateGalaxyGeometry(true); // Pass true to double particles
   const [hovered, setHovered] = useState(false);
   
   const particleTexture = useMemo(() => createParticleTexture(), []);
@@ -68,12 +69,14 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           />
         </bufferGeometry>
         <pointsMaterial
-          size={0.02}
+          size={0.015} // Smaller size since we have more particles
           sizeAttenuation={true}
           depthWrite={false}
           vertexColors={true}
           blending={THREE.AdditiveBlending}
           map={particleTexture}
+          opacity={1.2} // Increased brightness
+          transparent={true}
         />
       </motion.points>
 
@@ -93,8 +96,8 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
             sizeAttenuation={true}
             depthWrite={false}
             color="#ffffff"
-            opacity={hovered ? 1 : 0.8}
-            transparent
+            opacity={hovered ? 1.2 : 1}
+            transparent={true}
             blending={THREE.AdditiveBlending}
             map={particleTexture}
           />
