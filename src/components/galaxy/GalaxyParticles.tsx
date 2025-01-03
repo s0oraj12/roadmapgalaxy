@@ -18,8 +18,8 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
     const geometry = generateGalaxyGeometry();
     const targetIdx = geometry.positions.length;
     
-    // Add target star at a specific position (similar to sun in milky way)
-    const targetPos = new THREE.Vector3(8, 0, 8); // Position further out in the galaxy
+    // Position the target star between center and edge (like Sun in Milky Way)
+    const targetPos = new THREE.Vector3(4, 0, 4); // Adjust these values to position the star
     const newPositions = new Float32Array([...geometry.positions, targetPos.x, targetPos.y, targetPos.z]);
     const newColors = new Float32Array([...geometry.colors, 1, 1, 1]); // White color for target
     
@@ -30,11 +30,11 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
     };
   }, []);
 
-  // Create line geometry for the connecting line
+  // Create line geometry for the connecting line (pointing upward)
   const lineGeometry = useMemo(() => {
     const points = [
-      new THREE.Vector3(8, 0, 8), // Start at target star
-      new THREE.Vector3(8, -2, 8)  // End below the star
+      new THREE.Vector3(4, 0, 4),    // Start at target star
+      new THREE.Vector3(4, 2, 4)     // End above the star
     ];
     return new THREE.BufferGeometry().setFromPoints(points);
   }, []);
@@ -47,6 +47,11 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
       lineRef.current.rotation.y = galaxyRef.current?.rotation.y || 0;
     }
   });
+
+  const handleClick = (event: THREE.Event) => {
+    event.stopPropagation();
+    onTargetClick();
+  };
 
   return (
     <group>
@@ -114,20 +119,28 @@ const GalaxyParticles: React.FC<Props> = ({ targetPosition, onTargetClick }) => 
         />
       </points>
 
-      {/* Always visible line and label */}
-      <line ref={lineRef}>
+      {/* Clickable line */}
+      <line ref={lineRef} onClick={handleClick}>
         <bufferGeometry attach="geometry" {...lineGeometry} />
-        <lineBasicMaterial attach="material" color="white" linewidth={2} />
+        <lineBasicMaterial 
+          attach="material" 
+          color="white" 
+          linewidth={2}
+          transparent
+          opacity={0.8}
+        />
       </line>
 
+      {/* Clickable text */}
       <Text
-        position={[8, -2.2, 8]} // Position below the line
+        position={[4, 2.2, 4]} // Position above the line
         fontSize={0.5}
         color="white"
         anchorX="center"
-        anchorY="top"
+        anchorY="bottom"
         renderOrder={1}
         depthTest={false}
+        onClick={handleClick}
       >
         Level1
       </Text>
