@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { motion } from 'framer-motion-3d';
 import * as THREE from 'three';
 import { Text } from '@react-three/drei';
 import { generateGalaxyGeometry } from './utils/galaxyGeometry';
+import { createParticleTexture } from './utils/particleTexture';
 
 interface Props {
   targetPosition: THREE.Vector3;
@@ -15,6 +16,8 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
   const detailsRef = useRef<THREE.Group>(null);
   const { positions, colors } = generateGalaxyGeometry();
   const [hovered, setHovered] = useState(false);
+  
+  const particleTexture = useMemo(() => createParticleTexture(), []);
   
   const linePoints = [
     new THREE.Vector3(0, 0, 0),
@@ -28,11 +31,9 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
     
     if (detailsRef.current) {
       detailsRef.current.rotation.y = galaxyRef.current?.rotation.y || 0;
-      // Use elapsedTime for smooth animation
-      const progress = Math.min(1, (state.clock.elapsedTime - 2) * 0.5); // Start after 2s, take 2s to complete
+      const progress = Math.min(1, (state.clock.elapsedTime - 2) * 0.5);
       detailsRef.current.scale.setScalar(progress);
       
-      // Subtle floating animation only after fully appeared
       if (progress === 1) {
         detailsRef.current.position.y = Math.sin(state.clock.elapsedTime) * 0.02;
       }
@@ -72,6 +73,9 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           depthWrite={false}
           vertexColors={true}
           blending={THREE.AdditiveBlending}
+          map={particleTexture}
+          transparent={true}
+          alphaMap={particleTexture}
         />
       </motion.points>
 
@@ -92,8 +96,10 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
             depthWrite={false}
             color="#ffffff"
             opacity={hovered ? 1 : 0.8}
-            transparent
+            transparent={true}
             blending={THREE.AdditiveBlending}
+            map={particleTexture}
+            alphaMap={particleTexture}
           />
         </points>
 
@@ -107,7 +113,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
         </mesh>
       </group>
 
-      {/* Line and Text - always rendered but scaled */}
+      {/* Line and Text */}
       <group ref={detailsRef} position={targetPosition} scale={0}>
         <line geometry={new THREE.BufferGeometry().setFromPoints(linePoints)}>
           <lineBasicMaterial
