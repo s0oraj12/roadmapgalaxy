@@ -1,9 +1,9 @@
-import { useRef, useState, useMemo, useEffect } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { motion } from 'framer-motion-3d';
 import * as THREE from 'three';
-import { Text, useTexture, Effects } from '@react-three/drei';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
+import { Text } from '@react-three/drei';
+import { EffectComposer, UnrealBloomPass } from '@react-three/postprocessing';
 import { generateGalaxyGeometry } from './utils/galaxyGeometry';
 import { createParticleTexture } from './utils/particleTexture';
 
@@ -87,6 +87,14 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
 
   return (
     <>
+      <EffectComposer>
+        <UnrealBloomPass
+          threshold={0.1}
+          strength={0.8}
+          radius={0.8}
+        />
+      </EffectComposer>
+
       {/* Main Galaxy */}
       <motion.points
         ref={galaxyRef}
@@ -112,15 +120,6 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           alphaTest={0.001}
         />
       </motion.points>
-
-      {/* Bloom Effect */}
-      <Effects>
-        <unrealBloomPass
-          threshold={0.1}
-          strength={0.8}
-          radius={0.8}
-        />
-      </Effects>
 
       {/* Lighting */}
       <ambientLight intensity={0.1} />
