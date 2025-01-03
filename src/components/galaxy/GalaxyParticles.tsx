@@ -68,7 +68,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           />
         </bufferGeometry>
         <pointsMaterial
-          size={0.03} // Increased from 0.02
+          size={0.04} // Increased size for more prominence
           sizeAttenuation={true}
           depthWrite={false}
           vertexColors={true}
@@ -76,8 +76,8 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           map={particleTexture}
           transparent={true}
           alphaMap={particleTexture}
-          opacity={1} // Added full opacity
-          alphaTest={0.001} // Added to remove artifacts
+          opacity={1.5} // Increased opacity for more intensity
+          alphaTest={0.001}
         />
       </motion.points>
 
@@ -93,16 +93,16 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
             />
           </bufferGeometry>
           <pointsMaterial
-            size={0.03} // Matched with main particles
+            size={0.04} // Matched with main particles
             sizeAttenuation={true}
             depthWrite={false}
             color="#ffffff"
-            opacity={hovered ? 1 : 0.8}
+            opacity={hovered ? 1.5 : 1.2} // Increased opacity
             transparent={true}
             blending={THREE.AdditiveBlending}
             map={particleTexture}
             alphaMap={particleTexture}
-            alphaTest={0.001} // Added to remove artifacts
+            alphaTest={0.001}
           />
         </points>
 
