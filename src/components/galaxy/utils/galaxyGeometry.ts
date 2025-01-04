@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GalaxyConfig } from '../types';
 
 const DEFAULT_CONFIG: GalaxyConfig = {
-  particlesCount: 1000000 // Tripled for more detail
+  particlesCount: 1000000, // Tripled for more detail
   radius: 12,
   branches: 5, // More branches for realism
   spin: 1.5, // Reduced for more natural spiral
