@@ -7,8 +7,8 @@ const DEFAULT_CONFIG: GalaxyConfig = {
   branches: 5, // More branches for realism
   spin: 1.5, // Reduced for more natural spiral
   randomnessPower: 2.8,
-  bulgeSize: 0.3, // New: controls central bulge size
-  armWidth: 0.4, // New: controls spiral arm width
+  bulgeSize: 0.25, // New: controls central bulge size
+  armWidth: 0.3, // New: controls spiral arm width
   dustLanes: true, // New: enable dust lanes
   coreIntensity: 2.5, // New: brightness of the core
   // Enhanced colors for more realistic appearance
@@ -42,7 +42,7 @@ export const generateGalaxyGeometry = (config: Partial<GalaxyConfig> = {}) => {
   const dustLaneColor = new THREE.Color(dustColor);
 
   // Create central bulge particles (30% of total)
-  const bulgeCount = Math.floor(particlesCount * 0.3);
+  const bulgeCount = Math.floor(particlesCount * 0.35);
   let currentIndex = 0;
 
   for (let i = 0; i < bulgeCount; i++) {
