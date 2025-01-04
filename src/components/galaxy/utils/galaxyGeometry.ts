@@ -2,19 +2,18 @@ import * as THREE from 'three';
 import { GalaxyConfig } from '../types';
 
 const DEFAULT_CONFIG: GalaxyConfig = {
-  particlesCount: 1000000, // Tripled for more detail
+  particlesCount: 1000000, // Increased to 1 million
   radius: 12,
-  branches: 5, // More branches for realism
-  spin: 1.5, // Reduced for more natural spiral
-  randomnessPower: 2.8,
-  bulgeSize: 0.3, // New: controls central bulge size
-  armWidth: 0.4, // New: controls spiral arm width
-  dustLanes: true, // New: enable dust lanes
-  coreIntensity: 2.5, // New: brightness of the core
-  // Enhanced colors for more realistic appearance
-  insideColor: '#ffab4d', // Warmer core color
-  outsideColor: '#3b7bcc', // Bluer spiral arms
-  dustColor: '#4a2d05' // Dark dust lane color
+  branches: 6, // Increased branches for better particle distribution
+  spin: 1.3, // Slightly reduced for better performance with more particles
+  randomnessPower: 2.5, // Adjusted for better distribution
+  bulgeSize: 0.22, // Reduced for tighter core
+  armWidth: 0.3, // Reduced for cleaner spiral arms
+  dustLanes: true,
+  coreIntensity: 3.0, // Increased for brighter core
+  insideColor: '#ff9933', // Adjusted for better visibility with smaller particles
+  outsideColor: '#3366cc', // Adjusted for better visibility with smaller particles
+  dustColor: '#331a00' // Darker dust lanes for contrast
 };
 
 export const generateGalaxyGeometry = (config: Partial<GalaxyConfig> = {}) => {
@@ -34,71 +33,71 @@ export const generateGalaxyGeometry = (config: Partial<GalaxyConfig> = {}) => {
     dustColor
   } = finalConfig;
 
+  // Pre-allocate arrays for better performance
   const positions = new Float32Array(particlesCount * 3);
   const colors = new Float32Array(particlesCount * 3);
   const sizes = new Float32Array(particlesCount);
+  
+  // Pre-create colors for better performance
   const centerColor = new THREE.Color(insideColor);
   const outerColor = new THREE.Color(outsideColor);
   const dustLaneColor = new THREE.Color(dustColor);
+  const mixedColor = new THREE.Color();
 
-  // Create central bulge particles (30% of total)
-  const bulgeCount = Math.floor(particlesCount * 0.3);
+  // Create central bulge particles (25% of total for better density distribution)
+  const bulgeCount = Math.floor(particlesCount * 0.25);
   let currentIndex = 0;
 
+  // Optimized bulge generation
   for (let i = 0; i < bulgeCount; i++) {
     const i3 = currentIndex * 3;
-    // Gaussian distribution for bulge
-    const r = Math.pow(Math.random(), 2) * radius * bulgeSize;
+    const r = Math.pow(Math.random(), 3) * radius * bulgeSize; // Cubic distribution for denser core
     const theta = Math.random() * Math.PI * 2;
-    const phi = Math.random() * Math.PI * 2;
+    const phi = Math.acos((Math.random() * 2) - 1); // Better spherical distribution
 
-    positions[i3] = r * Math.sin(theta) * Math.cos(phi);
-    positions[i3 + 1] = r * Math.sin(theta) * Math.sin(phi);
-    positions[i3 + 2] = r * Math.cos(theta);
+    positions[i3] = r * Math.sin(phi) * Math.cos(theta);
+    positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+    positions[i3 + 2] = r * Math.cos(phi);
 
-    // Brighter core
-    const intensity = (1 - r / (radius * bulgeSize)) * coreIntensity;
-    const mixedColor = new THREE.Color(insideColor);
-    mixedColor.multiplyScalar(intensity);
+    // Optimized color calculation
+    const intensity = Math.pow(1 - r / (radius * bulgeSize), 2) * coreIntensity;
+    mixedColor.copy(centerColor).multiplyScalar(intensity);
 
     colors[i3] = mixedColor.r;
     colors[i3 + 1] = mixedColor.g;
     colors[i3 + 2] = mixedColor.b;
 
-    sizes[currentIndex] = Math.random() * 0.5 + 0.5;
+    sizes[currentIndex] = Math.random() * 0.3 + 0.2; // Varied sizes for depth
     currentIndex++;
   }
 
-  // Create spiral arm particles
+  // Optimized spiral arm generation
+  const armOffset = Math.PI * 2 / branches;
   for (let i = currentIndex; i < particlesCount; i++) {
     const i3 = i * 3;
-    const armRadius = (Math.random() * (radius - radius * bulgeSize)) + radius * bulgeSize;
+    const armRadius = Math.random() * (radius - radius * bulgeSize) + radius * bulgeSize;
     const branchAngle = ((i % branches) / branches) * Math.PI * 2;
-    const spinAngle = armRadius * spin;
-
-    // Logarithmic spiral formula
-    const rotationAngle = branchAngle + spinAngle;
-    const armOffset = Math.random() * armWidth - armWidth / 2;
-
-    // Add structured randomness
-    const randomX = Math.pow(Math.random(), randomnessPower) * (Math.random() < 0.5 ? 1 : -1);
-    const randomY = Math.pow(Math.random(), randomnessPower) * (Math.random() < 0.5 ? 1 : -1);
-    const randomZ = Math.pow(Math.random(), randomnessPower) * (Math.random() < 0.5 ? 1 : -1);
-
-    positions[i3] = (Math.cos(rotationAngle) * armRadius + randomX) + Math.cos(rotationAngle + Math.PI/2) * armOffset;
-    positions[i3 + 1] = randomY * (armRadius / radius);
-    positions[i3 + 2] = (Math.sin(rotationAngle) * armRadius + randomZ) + Math.sin(rotationAngle + Math.PI/2) * armOffset;
-
-    // Color mixing with dust lanes
-    const mixedColor = new THREE.Color();
-    const radiusPercent = armRadius / radius;
     
-    if (dustLanes && Math.abs(armOffset) < armWidth * 0.3 && Math.random() < 0.3) {
+    // Optimized spiral formula
+    const rotation = branchAngle + armRadius * spin;
+    const randomOffset = Math.pow(Math.random(), randomnessPower);
+    const offsetAngle = (Math.random() - 0.5) * armWidth;
+    
+    // Calculate position with optimized math
+    const x = Math.cos(rotation);
+    const z = Math.sin(rotation);
+    positions[i3] = x * armRadius + Math.cos(rotation + Math.PI/2) * offsetAngle;
+    positions[i3 + 1] = (Math.random() - 0.5) * randomOffset * 2;
+    positions[i3 + 2] = z * armRadius + Math.sin(rotation + Math.PI/2) * offsetAngle;
+
+    // Optimized color mixing
+    const radiusPercent = armRadius / radius;
+    if (dustLanes && Math.abs(offsetAngle) < armWidth * 0.25 && Math.random() < 0.3) {
       mixedColor.copy(dustLaneColor);
     } else {
       mixedColor.lerpColors(centerColor, outerColor, radiusPercent);
-      // Add slight color variation
-      const variation = 0.1;
+      // Minimal color variation for performance
+      const variation = 0.05;
       mixedColor.r += (Math.random() - 0.5) * variation;
       mixedColor.g += (Math.random() - 0.5) * variation;
       mixedColor.b += (Math.random() - 0.5) * variation;
@@ -108,8 +107,8 @@ export const generateGalaxyGeometry = (config: Partial<GalaxyConfig> = {}) => {
     colors[i3 + 1] = mixedColor.g;
     colors[i3 + 2] = mixedColor.b;
 
-    // Vary particle sizes based on position
-    sizes[i] = Math.random() * 0.5 + 0.25;
+    // Smaller sizes for better performance with more particles
+    sizes[i] = Math.random() * 0.2 + 0.1;
   }
 
   return { positions, colors, sizes };
