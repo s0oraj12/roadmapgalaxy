@@ -22,7 +22,7 @@ const CameraController = ({ targetPosition, isTransitioning, onTransitionComplet
   useFrame(() => {
     if (isTransitioning && progress < 1) {
       // Store initial positions
-      const startPosition = new THREE.Vector3(0, 3, 10);
+      const startPosition = new THREE.Vector3(0, 5, 30);
       const midPoint = startPosition.clone().lerp(targetPosition, 0.5);
       midPoint.y += 2; // Add arc to path
 
