@@ -4,7 +4,7 @@ import { GalaxyConfig } from '../types';
 const DEFAULT_CONFIG: GalaxyConfig = {
   particlesCount: 1000000, // Tripled for more detail
   radius: 20,
-  branches: 5, // More branches for realism
+  branches: 10, // More branches for realism
   spin: 1.5, // Reduced for more natural spiral
   randomnessPower: 1.8,
   bulgeSize: 0.25, // New: controls central bulge size
