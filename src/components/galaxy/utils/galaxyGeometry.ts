@@ -1,24 +1,11 @@
 import * as THREE from 'three';
-import { GalaxyConfig } from '../types';
-
-const DEFAULT_CONFIG: GalaxyConfig = {
-  particlesCount: 150000, // Tripled for more detail
-  radius: 12,
-  branches: 5, // More branches for realism
-  spin: 1.5, // Reduced for more natural spiral
-  randomnessPower: 2.8,
-  bulgeSize: 0.3, // New: controls central bulge size
-  armWidth: 0.4, // New: controls spiral arm width
-  dustLanes: true, // New: enable dust lanes
-  coreIntensity: 2.5, // New: brightness of the core
-  // Enhanced colors for more realistic appearance
-  insideColor: '#ffab4d', // Warmer core color
-  outsideColor: '#3b7bcc', // Bluer spiral arms
-  dustColor: '#4a2d05' // Dark dust lane color
-};
+import { GalaxyConfig } from '../types/galaxyTypes';
+import { GALAXY_PRESETS } from './galaxyPresets';
 
 export const generateGalaxyGeometry = (config: Partial<GalaxyConfig> = {}) => {
-  const finalConfig = { ...DEFAULT_CONFIG, ...config };
+  const baseConfig = GALAXY_PRESETS[config.galaxyType || 'spiral'];
+  const finalConfig = { ...baseConfig, ...config };
+
   const {
     particlesCount,
     radius,
@@ -31,33 +18,45 @@ export const generateGalaxyGeometry = (config: Partial<GalaxyConfig> = {}) => {
     coreIntensity,
     insideColor,
     outsideColor,
-    dustColor
+    dustColor,
+    hasActiveNucleus,
+    starFormationRate,
+    diskHeight,
+    bulgeHeight,
+    spiralPitch,
+    barLength
   } = finalConfig;
 
   const positions = new Float32Array(particlesCount * 3);
   const colors = new Float32Array(particlesCount * 3);
   const sizes = new Float32Array(particlesCount);
+  
   const centerColor = new THREE.Color(insideColor);
   const outerColor = new THREE.Color(outsideColor);
   const dustLaneColor = new THREE.Color(dustColor);
 
-  // Create central bulge particles (30% of total)
+  // Bulge generation with Sérsic profile
   const bulgeCount = Math.floor(particlesCount * 0.3);
   let currentIndex = 0;
 
   for (let i = 0; i < bulgeCount; i++) {
     const i3 = currentIndex * 3;
-    // Gaussian distribution for bulge
-    const r = Math.pow(Math.random(), 2) * radius * bulgeSize;
+    
+    // Sérsic profile implementation
+    const n = 4; // Sérsic index
+    const r = Math.pow(Math.random(), 1/n) * radius * bulgeSize;
     const theta = Math.random() * Math.PI * 2;
-    const phi = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    
+    positions[i3] = r * Math.sin(phi) * Math.cos(theta);
+    positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta) * bulgeHeight;
+    positions[i3 + 2] = r * Math.cos(phi);
 
-    positions[i3] = r * Math.sin(theta) * Math.cos(phi);
-    positions[i3 + 1] = r * Math.sin(theta) * Math.sin(phi);
-    positions[i3 + 2] = r * Math.cos(theta);
+    // Enhanced core brightness for active nucleus
+    const intensity = hasActiveNucleus 
+      ? (1 - r/(radius * bulgeSize)) * coreIntensity * 2
+      : (1 - r/(radius * bulgeSize)) * coreIntensity;
 
-    // Brighter core
-    const intensity = (1 - r / (radius * bulgeSize)) * coreIntensity;
     const mixedColor = new THREE.Color(insideColor);
     mixedColor.multiplyScalar(intensity);
 
@@ -65,39 +64,88 @@ export const generateGalaxyGeometry = (config: Partial<GalaxyConfig> = {}) => {
     colors[i3 + 1] = mixedColor.g;
     colors[i3 + 2] = mixedColor.b;
 
-    sizes[currentIndex] = Math.random() * 0.5 + 0.5;
+    sizes[currentIndex] = hasActiveNucleus && r < bulgeSize * 0.2
+      ? Math.random() * 0.8 + 0.7
+      : Math.random() * 0.5 + 0.5;
+
     currentIndex++;
   }
 
-  // Create spiral arm particles
+  // Disk and arm generation
   for (let i = currentIndex; i < particlesCount; i++) {
     const i3 = i * 3;
-    const armRadius = (Math.random() * (radius - radius * bulgeSize)) + radius * bulgeSize;
-    const branchAngle = ((i % branches) / branches) * Math.PI * 2;
-    const spinAngle = armRadius * spin;
-
-    // Logarithmic spiral formula
-    const rotationAngle = branchAngle + spinAngle;
-    const armOffset = Math.random() * armWidth - armWidth / 2;
-
-    // Add structured randomness
-    const randomX = Math.pow(Math.random(), randomnessPower) * (Math.random() < 0.5 ? 1 : -1);
-    const randomY = Math.pow(Math.random(), randomnessPower) * (Math.random() < 0.5 ? 1 : -1);
-    const randomZ = Math.pow(Math.random(), randomnessPower) * (Math.random() < 0.5 ? 1 : -1);
-
-    positions[i3] = (Math.cos(rotationAngle) * armRadius + randomX) + Math.cos(rotationAngle + Math.PI/2) * armOffset;
-    positions[i3 + 1] = randomY * (armRadius / radius);
-    positions[i3 + 2] = (Math.sin(rotationAngle) * armRadius + randomZ) + Math.sin(rotationAngle + Math.PI/2) * armOffset;
-
-    // Color mixing with dust lanes
-    const mixedColor = new THREE.Color();
-    const radiusPercent = armRadius / radius;
     
-    if (dustLanes && Math.abs(armOffset) < armWidth * 0.3 && Math.random() < 0.3) {
+    if (branches === 0) {
+      // Irregular galaxy distribution
+      const r = Math.random() * radius;
+      const theta = Math.random() * Math.PI * 2;
+      const height = (Math.random() - 0.5) * diskHeight * 2;
+
+      positions[i3] = r * Math.cos(theta);
+      positions[i3 + 1] = height;
+      positions[i3 + 2] = r * Math.sin(theta);
+    } else {
+      // Spiral or barred galaxy distribution
+      const armRadius = Math.random() * radius;
+      const branchAngle = ((i % branches) / branches) * Math.PI * 2;
+      const pitchAngle = Math.log(armRadius) * spiralPitch;
+      
+      // Bar formation for barred galaxies
+      const isInBar = config.galaxyType === 'barred' && 
+                     armRadius < radius * (barLength || 0.3);
+      const rotation = isInBar
+        ? branchAngle
+        : branchAngle + pitchAngle + armRadius * spin;
+
+      // Enhanced dust lane formation
+      const armOffset = Math.random() * armWidth - armWidth / 2;
+      const height = Math.random() * Math.exp(-armRadius / (radius * 0.3)) * diskHeight;
+
+      // Structured randomness based on position
+      const randomScale = Math.pow(Math.random(), randomnessPower) * 
+                         (1 + armRadius / radius);
+      const randomX = randomScale * (Math.random() < 0.5 ? 1 : -1);
+      const randomY = randomScale * (Math.random() < 0.5 ? 1 : -1) * 0.5;
+      const randomZ = randomScale * (Math.random() < 0.5 ? 1 : -1);
+
+      positions[i3] = (Math.cos(rotation) * armRadius + randomX) + 
+                     (isInBar ? Math.cos(branchAngle) * armRadius * 0.5 : 0);
+      positions[i3 + 1] = height + randomY;
+      positions[i3 + 2] = (Math.sin(rotation) * armRadius + randomZ) + 
+                     (isInBar ? Math.sin(branchAngle) * armRadius * 0.5 : 0);
+    }
+
+    // Enhanced color mixing with star formation regions
+    const mixedColor = new THREE.Color();
+    const radiusPercent = Math.sqrt(
+      positions[i3] * positions[i3] + 
+      positions[i3 + 2] * positions[i3 + 2]
+    ) / radius;
+
+    if (dustLanes && 
+        Math.abs(positions[i3 + 1]) < diskHeight * 0.2 && 
+        Math.random() < 0.3) {
       mixedColor.copy(dustLaneColor);
+      // Add reddening effect
+      mixedColor.r *= 1.2;
+      sizes[i] = Math.random() * 0.3 + 0.2;
     } else {
       mixedColor.lerpColors(centerColor, outerColor, radiusPercent);
-      // Add slight color variation
+      
+      // Star formation regions
+      const isStarForming = Math.random() < starFormationRate * 0.2 && 
+                           radiusPercent > 0.3 && 
+                           radiusPercent < 0.8;
+      
+      if (isStarForming) {
+        mixedColor.r *= 1.2;
+        mixedColor.g *= 1.1;
+        sizes[i] = Math.random() * 0.8 + 0.6;
+      } else {
+        sizes[i] = Math.random() * 0.4 + 0.2;
+      }
+
+      // Natural color variation
       const variation = 0.1;
       mixedColor.r += (Math.random() - 0.5) * variation;
       mixedColor.g += (Math.random() - 0.5) * variation;
@@ -107,9 +155,6 @@ export const generateGalaxyGeometry = (config: Partial<GalaxyConfig> = {}) => {
     colors[i3] = mixedColor.r;
     colors[i3 + 1] = mixedColor.g;
     colors[i3 + 2] = mixedColor.b;
-
-    // Vary particle sizes based on position
-    sizes[i] = Math.random() * 0.5 + 0.25;
   }
 
   return { positions, colors, sizes };
