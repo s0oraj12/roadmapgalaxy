@@ -14,28 +14,20 @@ interface Props {
 const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
   const galaxyRef = useRef<THREE.Points>(null);
   const detailsRef = useRef<THREE.Group>(null);
-  
-  // Use useMemo to prevent regeneration on every render
-  const galaxyData = useMemo(() => generateGalaxyGeometry(), []);
+  // Double the particle count in generateGalaxyGeometry
+  const { positions, colors } = generateGalaxyGeometry(true); // Pass true to double particles
   const [hovered, setHovered] = useState(false);
   
-  // Optimize particle texture
-  const particleTexture = useMemo(() => {
-    const texture = createParticleTexture();
-    texture.minFilter = THREE.LinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    return texture;
-  }, []);
+  const particleTexture = useMemo(() => createParticleTexture(), []);
   
-  const linePoints = useMemo(() => [
+  const linePoints = [
     new THREE.Vector3(0, 0, 0),
     new THREE.Vector3(0, 1.2, 0)
-  ], []);
+  ];
 
   useFrame((state) => {
     if (galaxyRef.current) {
-      // Reduced rotation speed for smoother performance
-      galaxyRef.current.rotation.y += 0.0003;
+      galaxyRef.current.rotation.y += 0.0005;
     }
     
     if (detailsRef.current) {
@@ -44,7 +36,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
       detailsRef.current.scale.setScalar(progress);
       
       if (progress === 1) {
-        detailsRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.02;
+        detailsRef.current.position.y = Math.sin(state.clock.elapsedTime) * 0.02;
       }
     }
   });
@@ -56,7 +48,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ 
-          duration: 2,
+          duration: 2, 
           ease: "easeOut",
           type: "spring",
           damping: 20 
@@ -65,32 +57,30 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            count={galaxyData.positions.length / 3}
-            array={galaxyData.positions}
+            count={positions.length / 3}
+            array={positions}
             itemSize={3}
           />
           <bufferAttribute
             attach="attributes-color"
-            count={galaxyData.colors.length / 3}
-            array={galaxyData.colors}
+            count={colors.length / 3}
+            array={colors}
             itemSize={3}
           />
         </bufferGeometry>
         <pointsMaterial
-          size={0.004} // Reduced size for 1M particles
+          size={0.015} // Smaller size since we have more particles
           sizeAttenuation={true}
           depthWrite={false}
           vertexColors={true}
           blending={THREE.AdditiveBlending}
           map={particleTexture}
-          opacity={0.8} // Reduced opacity for better performance
+          opacity={1.2} // Increased brightness
           transparent={true}
-          alphaTest={0.01} // Added for better performance
-          fog={false} // Disabled fog for performance
         />
       </motion.points>
 
-      {/* Target Star - optimized for performance */}
+      {/* Target Star */}
       <group position={targetPosition}>
         <points>
           <bufferGeometry>
@@ -102,7 +92,7 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
             />
           </bufferGeometry>
           <pointsMaterial
-            size={0.015}
+            size={0.02}
             sizeAttenuation={true}
             depthWrite={false}
             color="#ffffff"
@@ -118,12 +108,11 @@ const GalaxyParticles = ({ targetPosition, onTargetClick }: Props) => {
           onPointerOut={() => setHovered(false)}
           onClick={onTargetClick}
         >
-          <sphereGeometry args={[0.05, 6, 6]} /> {/* Reduced segments */}
+          <sphereGeometry args={[0.05, 8, 8]} />
           <meshBasicMaterial transparent opacity={0} />
         </mesh>
       </group>
 
-      {/* Optimized details group */}
       <group ref={detailsRef} position={targetPosition} scale={0}>
         <line geometry={new THREE.BufferGeometry().setFromPoints(linePoints)}>
           <lineBasicMaterial
